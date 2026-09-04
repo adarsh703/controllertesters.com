@@ -1,46 +1,31 @@
-# Astro Starter Kit: Basics
+# ControllerTesters.com
 
+A suite of fast, web-based diagnostic tools for gamers and esports competitors. 
+
+## Features
+- **Gamepad Diagnostic:** Test buttons, triggers, and axes on Xbox, PlayStation, and generic gamepads.
+- **Stick Drift Test:** High-precision visualization to detect analog stick drift and deadzone issues.
+- **Reaction Matrix:** F1-style reflex test to measure human reaction time in milliseconds.
+
+## Tech Stack
+- **Framework:** [Astro](https://astro.build/) (Static Site Generation)
+- **UI & Components:** React, Tailwind CSS
+- **APIs:** HTML5 Gamepad API
+- **Internationalization:** 11 languages supported natively
+
+## Getting Started
+
+1. Install dependencies:
+   ```sh
+   npm install
+   ```
+2. Run the development server:
+   ```sh
+   npm run dev
+   ```
+3. Open `http://localhost:4321` in your browser.
+
+## Build
 ```sh
-npm create astro@latest -- --template basics
+npm run build
 ```
-
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
-
-## 🚀 Project Structure
-
-Inside of your Astro project, you'll see the following folders and files:
-
-```text
-/
-├── public/
-│   └── favicon.svg
-├── src
-│   ├── assets
-│   │   └── astro.svg
-│   ├── components
-│   │   └── Welcome.astro
-│   ├── layouts
-│   │   └── Layout.astro
-│   └── pages
-│       └── index.astro
-└── package.json
-```
-
-To learn more about the folder structure of an Astro project, refer to [our guide on project structure](https://docs.astro.build/en/basics/project-structure/).
-
-## 🧞 Commands
-
-All commands are run from the root of the project, from a terminal:
-
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `npm install`             | Installs dependencies                            |
-| `npm run dev`             | Starts local dev server at `localhost:4321`      |
-| `npm run build`           | Build your production site to `./dist/`          |
-| `npm run preview`         | Preview your build locally, before deploying     |
-| `npm run astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `npm run astro -- --help` | Get help using the Astro CLI                     |
-
-## 👀 Want to learn more?
-
-Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
