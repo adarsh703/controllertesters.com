@@ -399,7 +399,7 @@ export function ReactionMatrix({ initialMode = 'f1', lang }: ReactionMatrixProps
                 {t.launchF1Btn}
               </button>
               <div className="text-[11px] font-mono text-muted uppercase tracking-wider mt-3">
-                {t.f1ControlsHint}
+                {t.f1ControlsHint.replace('RT / R2', triggerName)}
               </div>
             </div>
           ) : (
@@ -421,7 +421,7 @@ export function ReactionMatrix({ initialMode = 'f1', lang }: ReactionMatrixProps
                 {t.startMatrixBtn}
               </button>
               <div className="text-[11px] font-mono text-muted uppercase tracking-wider mt-3">
-                {t.matrixControlsHint}
+                {t.matrixControlsHint.replace(/A\s*\/\s*(Cross|X|Cruz|Croix|Kreuz|✕|Croce)/i, getBottomButtonName())}
               </div>
             </div>
           )}
