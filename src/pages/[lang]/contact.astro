@@ -1,0 +1,140 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { contactContent } from '../../i18n/content/legalContent';
+import { nonDefaultLocales, type SupportedLang } from '../../i18n/languages';
+import { getLocalizedUrl } from '../../i18n/utils';
+
+export async function getStaticPaths() {
+  return nonDefaultLocales.map((lang) => ({ params: { lang } }));
+}
+
+const { lang } = Astro.params as { lang: SupportedLang };
+const content = contactContent[lang] || contactContent['en'];
+const canonicalUrl = getLocalizedUrl(lang, Astro.url);
+const colorTokens = ['text-m-blue-light', 'text-m-blue-dark', 'text-[#0fa336]'];
+---
+
+<Layout 
+  title={content.title}
+  description={content.description}
+  canonicalUrl={canonicalUrl}
+  lang={lang}
+>
+  <div class="max-w-4xl mx-auto py-8 sm:py-12 space-y-12">
+    <!-- Header -->
+    <div>
+      <span class="font-display font-bold text-xs uppercase tracking-[2px] text-m-blue-dark block mb-2">{content.badge}</span>
+      <h1 class="text-3xl sm:text-4xl md:text-5xl font-display font-bold text-ink uppercase tracking-tight">
+        {content.heading}
+      </h1>
+      <p class="text-muted text-base sm:text-lg font-light leading-relaxed mt-4">
+        {content.sub}
+      </p>
+    </div>
+
+    <!-- Contact Info Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+      <div class="bg-stone-50/80 dark:bg-[#151515] border border-stone-200/80 dark:border-[#262626] rounded-xl p-6">
+        <span class="text-xs font-mono uppercase tracking-wider text-m-blue-light font-bold block mb-1">
+          {content.emailLabel}
+        </span>
+        <a href={`mailto:${content.email}`} class="text-base sm:text-lg font-display font-bold text-ink hover:text-m-blue-dark transition-colors">
+          {content.email}
+        </a>
+      </div>
+      <div class="bg-stone-50/80 dark:bg-[#151515] border border-stone-200/80 dark:border-[#262626] rounded-xl p-6">
+        <span class="text-xs font-mono uppercase tracking-wider text-[#0fa336] font-bold block mb-1">
+          {content.timeframeLabel}
+        </span>
+        <span class="text-base sm:text-lg font-display font-bold text-ink">
+          {content.timeframe}
+        </span>
+      </div>
+    </div>
+
+    <!-- Communication Channels -->
+    <div>
+      <h2 class="text-xl sm:text-2xl font-display font-bold text-ink uppercase tracking-tight mb-6">
+        Support Channels
+      </h2>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+        {content.channels.map((channel, idx) => (
+          <div class="bg-stone-50/80 dark:bg-[#151515] border border-stone-200/80 dark:border-[#262626] rounded-xl p-5 sm:p-6 flex flex-col justify-between">
+            <div>
+              <div class={`text-xs font-mono font-bold uppercase tracking-wider mb-2 ${colorTokens[idx % colorTokens.length]}`}>
+                Channel // 0{idx + 1}
+              </div>
+              <h3 class="text-base font-display font-bold text-ink uppercase mb-2">
+                {channel.title}
+              </h3>
+              <p class="text-muted text-xs sm:text-sm leading-relaxed">
+                {channel.desc}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    <!-- Interactive Contact Form Box -->
+    <div class="bg-stone-50/80 dark:bg-[#151515] border border-stone-200/80 dark:border-[#262626] rounded-2xl p-6 sm:p-8">
+      <h2 class="text-xl sm:text-2xl font-display font-bold text-ink uppercase tracking-tight mb-6">
+        {content.formTitle}
+      </h2>
+      <form action={`mailto:${content.email}`} method="POST" enctype="text/plain" class="space-y-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-display font-bold uppercase text-ink mb-1.5">{content.nameLabel}</label>
+            <input 
+              type="text" 
+              name="name" 
+              required 
+              placeholder="e.g. Alex"
+              class="w-full bg-white dark:bg-[#111111] border border-stone-300 dark:border-[#282828] rounded-lg px-3.5 py-2.5 text-xs sm:text-sm text-ink focus:outline-none focus:border-m-blue-dark transition-colors"
+            />
+          </div>
+          <div>
+            <label class="block text-xs font-display font-bold uppercase text-ink mb-1.5">{content.emailInputLabel}</label>
+            <input 
+              type="email" 
+              name="email" 
+              required 
+              placeholder="you@example.com"
+              class="w-full bg-white dark:bg-[#111111] border border-stone-300 dark:border-[#282828] rounded-lg px-3.5 py-2.5 text-xs sm:text-sm text-ink focus:outline-none focus:border-m-blue-dark transition-colors"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-display font-bold uppercase text-ink mb-1.5">{content.topicLabel}</label>
+          <select 
+            name="topic" 
+            class="w-full bg-white dark:bg-[#111111] border border-stone-300 dark:border-[#282828] rounded-lg px-3.5 py-2.5 text-xs sm:text-sm text-ink focus:outline-none focus:border-m-blue-dark transition-colors"
+          >
+            {content.topics.map(t => (
+              <option value={t}>{t}</option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-display font-bold uppercase text-ink mb-1.5">{content.messageLabel}</label>
+          <textarea 
+            name="message" 
+            rows="4" 
+            required 
+            placeholder="Please include gamepad model, OS, and browser details..."
+            class="w-full bg-white dark:bg-[#111111] border border-stone-300 dark:border-[#282828] rounded-lg px-3.5 py-2.5 text-xs sm:text-sm text-ink focus:outline-none focus:border-m-blue-dark transition-colors"
+          ></textarea>
+        </div>
+
+        <button 
+          type="submit" 
+          class="px-6 py-2.5 bg-m-blue-dark hover:bg-m-blue-light text-white font-display font-bold uppercase text-xs tracking-wider rounded-lg transition-all shadow-md active:scale-95 cursor-pointer"
+        >
+          {content.submitLabel}
+        </button>
+      </form>
+    </div>
+  </div>
+</Layout>

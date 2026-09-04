@@ -1,0 +1,44 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { privacyContent } from '../i18n/content/legalContent';
+import { defaultLang } from '../i18n/languages';
+import { getLocalizedUrl } from '../i18n/utils';
+
+const lang = defaultLang;
+const content = privacyContent[lang];
+const canonicalUrl = getLocalizedUrl(lang, Astro.url);
+---
+
+<Layout 
+  title={content.title}
+  description={content.description}
+  canonicalUrl={canonicalUrl}
+  lang={lang}
+>
+  <div class="max-w-4xl mx-auto py-8 sm:py-12 space-y-10">
+    <!-- Header -->
+    <div class="border-b border-stone-200 dark:border-[#262626] pb-6">
+      <span class="font-display font-bold text-xs uppercase tracking-[2px] text-m-blue-dark block mb-2">{content.badge}</span>
+      <h1 class="text-3xl sm:text-4xl md:text-5xl font-display font-bold text-ink uppercase tracking-tight">
+        {content.heading}
+      </h1>
+      <span class="text-muted text-xs font-mono block mt-3">{content.lastUpdated}</span>
+    </div>
+
+    <!-- Sections -->
+    <div class="space-y-8">
+      {content.sections.map((section) => (
+        <div class="bg-stone-50/80 dark:bg-[#151515] border border-stone-200/80 dark:border-[#262626] rounded-xl p-6 sm:p-8 space-y-3">
+          <h2 class="text-lg sm:text-xl font-display font-bold text-ink uppercase tracking-tight">
+            {section.title}
+          </h2>
+          <div class="space-y-3 text-muted text-xs sm:text-sm leading-relaxed">
+            {section.content.map((paragraph) => (
+              <p>{paragraph}</p>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+</Layout>

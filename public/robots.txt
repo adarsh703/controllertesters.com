@@ -1,0 +1,6 @@
+# https://controllertesters.com/robots.txt
+User-agent: *
+Allow: /
+
+# Canonical XML Sitemap
+Sitemap: https://controllertesters.com/sitemap.xml

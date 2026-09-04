@@ -1,0 +1,75 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { defaultLang } from '../i18n/languages';
+
+const lang = defaultLang;
+---
+
+<Layout 
+  title="500 - Diagnostic Pipeline Anomaly | ControllerTesters.com"
+  description="Error 500: An unexpected internal diagnostic pipeline anomaly occurred on ControllerTesters.com."
+  lang={lang}
+  noindex={true}
+>
+  <div class="w-full min-h-[70vh] flex flex-col items-center justify-center py-12 px-4 text-center">
+    
+    <!-- Telemetry Diagnostic Badge -->
+    <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-500 text-xs font-mono font-bold uppercase tracking-wider mb-6 animate-pulse">
+      <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+      STATUS // 500_TELEMETRY_OVERLOAD
+    </div>
+
+    <!-- Animated Warning & Actuator Visual -->
+    <div class="relative w-40 h-40 sm:w-48 sm:h-48 mb-8 flex items-center justify-center">
+      <div class="absolute inset-0 rounded-full border border-amber-500/20 animate-ping opacity-25"></div>
+      <div class="absolute inset-4 rounded-full border border-stone-300 dark:border-[#333] border-dashed animate-spin" style="animation-duration: 15s;"></div>
+      <div class="absolute inset-8 rounded-full border border-stone-200 dark:border-[#222]"></div>
+      
+      <div class="relative w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-stone-100 dark:bg-[#181818] border border-stone-300 dark:border-[#2c2c2c] flex items-center justify-center shadow-xl">
+        <svg class="w-10 h-10 sm:w-12 sm:h-12 text-amber-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+        </svg>
+      </div>
+    </div>
+
+    <!-- Main Typography -->
+    <h1 class="text-3xl sm:text-5xl font-display font-bold text-ink uppercase tracking-tight mb-3">
+      500 // Diagnostic Overload
+    </h1>
+    
+    <p class="text-muted text-sm sm:text-base max-w-lg mx-auto font-light leading-relaxed mb-8">
+      The server encountered an unexpected telemetry stream anomaly. Our engineering systems have recorded the event and are recalibrating the pipeline.
+    </p>
+
+    <!-- Quick Action Return Button -->
+    <div class="flex flex-wrap items-center justify-center gap-3 mb-12">
+      <a 
+        href="/"
+        class="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-ink text-paper font-display font-bold text-xs uppercase tracking-wider hover:opacity-90 transition-all shadow-md active:scale-95"
+      >
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        </svg>
+        Reconnect Telemetry
+      </a>
+      <a 
+        href="/contact"
+        class="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-stone-100 dark:bg-[#1c1c1c] border border-stone-200 dark:border-[#2e2e2e] text-ink font-display font-bold text-xs uppercase tracking-wider hover:bg-stone-200/60 dark:hover:bg-[#252525] transition-all"
+      >
+        Report Anomaly
+      </a>
+    </div>
+
+    <!-- Technical Hardware Breakdown Specs -->
+    <div class="w-full max-w-2xl p-4 sm:p-5 rounded-2xl bg-stone-50/80 dark:bg-[#151515] border border-stone-200/80 dark:border-[#262626] text-left">
+      <div class="flex items-center justify-between pb-3 mb-3 border-b border-stone-200 dark:border-[#262626]">
+        <span class="text-xs font-mono font-bold text-ink uppercase">Diagnostic Trace</span>
+        <span class="text-[11px] font-mono text-muted uppercase">HTTP_500_INTERNAL_SERVER_ERROR</span>
+      </div>
+      <p class="text-xs font-mono text-muted leading-relaxed">
+        If this issue persists, please clear your browser cache (<code class="text-ink">Ctrl + Shift + R</code>) or ensure your client browser is running the latest stable release of Google Chrome, Microsoft Edge, Mozilla Firefox, or Apple Safari.
+      </p>
+    </div>
+
+  </div>
+</Layout>

@@ -1,0 +1,100 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { defaultLang } from '../i18n/languages';
+
+const lang = defaultLang;
+---
+
+<Layout 
+  title="404 - Controller Signal Lost | ControllerTesters.com"
+  description="Error 404: The requested diagnostic route or page was not found on ControllerTesters.com."
+  lang={lang}
+  noindex={true}
+>
+  <div class="w-full min-h-[70vh] flex flex-col items-center justify-center py-12 px-4 text-center">
+    
+    <!-- Telemetry Diagnostic Badge -->
+    <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-500/10 border border-red-500/20 text-m-red text-xs font-mono font-bold uppercase tracking-wider mb-6 animate-pulse">
+      <span class="w-2 h-2 rounded-full bg-m-red"></span>
+      STATUS // 404_SIGNAL_DISCONNECTED
+    </div>
+
+    <!-- Animated Radar & Controller Visual -->
+    <div class="relative w-40 h-40 sm:w-48 sm:h-48 mb-8 flex items-center justify-center">
+      <!-- Radar Circles -->
+      <div class="absolute inset-0 rounded-full border border-red-500/20 animate-ping opacity-25"></div>
+      <div class="absolute inset-4 rounded-full border border-stone-300 dark:border-[#333] border-dashed animate-spin" style="animation-duration: 20s;"></div>
+      <div class="absolute inset-8 rounded-full border border-stone-200 dark:border-[#222]"></div>
+      
+      <!-- Center Disconnected Icon -->
+      <div class="relative w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-stone-100 dark:bg-[#181818] border border-stone-300 dark:border-[#2c2c2c] flex items-center justify-center shadow-xl">
+        <svg class="w-10 h-10 sm:w-12 sm:h-12 text-m-red" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+      </div>
+    </div>
+
+    <!-- Main Typography -->
+    <h1 class="text-3xl sm:text-5xl font-display font-bold text-ink uppercase tracking-tight mb-3">
+      404 // Controller Signal Lost
+    </h1>
+    
+    <p class="text-muted text-sm sm:text-base max-w-lg mx-auto font-light leading-relaxed mb-8">
+      The telemetry pathway or diagnostic benchmark you requested does not exist on this server frequency. It may have been relocated or recalibrated.
+    </p>
+
+    <!-- Quick Action Return Button -->
+    <div class="flex flex-wrap items-center justify-center gap-3 mb-12">
+      <a 
+        href="/"
+        class="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-ink text-paper font-display font-bold text-xs uppercase tracking-wider hover:opacity-90 transition-all shadow-md active:scale-95"
+      >
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+        </svg>
+        Return to Command Center
+      </a>
+      <a 
+        href="/stick-drift-test"
+        class="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-stone-100 dark:bg-[#1c1c1c] border border-stone-200 dark:border-[#2e2e2e] text-ink font-display font-bold text-xs uppercase tracking-wider hover:bg-stone-200/60 dark:hover:bg-[#252525] transition-all"
+      >
+        Stick Drift Test
+      </a>
+    </div>
+
+    <!-- Live Diagnostic Suite Quick Links Grid -->
+    <div class="w-full max-w-3xl pt-8 border-t border-stone-200 dark:border-[#262626]">
+      <span class="text-xs font-mono uppercase tracking-[2px] text-muted font-bold block mb-4">Available Diagnostics Channels</span>
+      
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-left">
+        <a 
+          href="/" 
+          class="p-4 rounded-xl bg-stone-50/80 dark:bg-[#151515] border border-stone-200/80 dark:border-[#262626] hover:border-m-blue-light/50 transition-all group"
+        >
+          <span class="text-xs font-mono text-m-blue-light font-bold block mb-1">01 // All-In-One</span>
+          <h2 class="text-xs sm:text-sm font-display font-bold text-ink uppercase group-hover:text-m-blue-light transition-colors">Gamepad Tester</h2>
+          <p class="text-muted text-[11px] mt-1">Full 18-button, trigger, rumble, and polling rate tester.</p>
+        </a>
+
+        <a 
+          href="/stick-drift-test" 
+          class="p-4 rounded-xl bg-stone-50/80 dark:bg-[#151515] border border-stone-200/80 dark:border-[#262626] hover:border-m-blue-dark/50 transition-all group"
+        >
+          <span class="text-xs font-mono text-m-blue-dark font-bold block mb-1">02 // Precision</span>
+          <h2 class="text-xs sm:text-sm font-display font-bold text-ink uppercase group-hover:text-m-blue-dark transition-colors">Stick Drift Test</h2>
+          <p class="text-muted text-[11px] mt-1">360° circularity error radar & resting deadzone benchmark.</p>
+        </a>
+
+        <a 
+          href="/f1-reaction-time-test" 
+          class="p-4 rounded-xl bg-stone-50/80 dark:bg-[#151515] border border-stone-200/80 dark:border-[#262626] hover:border-m-red/50 transition-all group"
+        >
+          <span class="text-xs font-mono text-m-red font-bold block mb-1">03 // Reflexes</span>
+          <h2 class="text-xs sm:text-sm font-display font-bold text-ink uppercase group-hover:text-m-red transition-colors">F1 Reflex Test</h2>
+          <p class="text-muted text-[11px] mt-1">Formula 1 starting lights reaction speed simulator.</p>
+        </a>
+      </div>
+    </div>
+
+  </div>
+</Layout>

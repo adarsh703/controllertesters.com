@@ -1,0 +1,86 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { aboutContent } from '../../i18n/content/legalContent';
+import { nonDefaultLocales, type SupportedLang } from '../../i18n/languages';
+import { getLocalizedUrl } from '../../i18n/utils';
+import { formatLocalizedNumber } from '../../i18n/numUtils';
+
+export async function getStaticPaths() {
+  return nonDefaultLocales.map((lang) => ({ params: { lang } }));
+}
+
+const { lang } = Astro.params as { lang: SupportedLang };
+const content = aboutContent[lang] || aboutContent['en'];
+const canonicalUrl = getLocalizedUrl(lang, Astro.url);
+const colorTokens = ['text-m-blue-light', 'text-m-blue-dark', 'text-[#0fa336]', 'text-m-red'];
+---
+
+<Layout 
+  title={content.title}
+  description={content.description}
+  canonicalUrl={canonicalUrl}
+  lang={lang}
+>
+  <div class="max-w-4xl w-full mx-auto py-12 px-4 sm:px-6 space-y-12">
+    
+    <!-- Hero / Header -->
+    <div class="border-b border-stone-200 dark:border-[#262626] pb-8">
+      <span class="text-xs font-mono uppercase tracking-[2px] text-m-blue-dark font-bold block mb-2">{content.badge}</span>
+      <h1 class="text-3xl sm:text-4xl font-display font-bold text-ink uppercase tracking-tight mb-4">
+        {content.heading}
+      </h1>
+      <p class="text-muted text-sm sm:text-base leading-relaxed">
+        {content.sub}
+      </p>
+    </div>
+
+    <!-- Mission Statement -->
+    <div class="bg-stone-50/80 dark:bg-[#151515] border border-stone-200/80 dark:border-[#262626] rounded-2xl p-6 sm:p-8">
+      <h2 class="text-xl sm:text-2xl font-display font-bold text-ink uppercase tracking-tight mb-4">
+        {content.missionTitle}
+      </h2>
+      <p class="text-muted text-sm sm:text-base leading-relaxed">
+        {content.missionText}
+      </p>
+    </div>
+
+    <!-- Core Pillars Grid -->
+    <div>
+      <h2 class="text-xl sm:text-2xl font-display font-bold text-ink uppercase tracking-tight mb-6">
+        {content.missionTitle}
+      </h2>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+        {content.pillars.map((pillar, idx) => (
+          <div class="bg-stone-50/80 dark:bg-[#151515] border border-stone-200/80 dark:border-[#262626] rounded-xl p-5 sm:p-6 flex flex-col justify-between">
+            <div>
+              <div class={`text-xs font-mono font-bold uppercase tracking-wider mb-2 ${colorTokens[idx % colorTokens.length]}`}>
+                {formatLocalizedNumber(idx + 1, lang, 2)}
+              </div>
+              <h3 class="text-base font-display font-bold text-ink uppercase mb-2">
+                {pillar.title}
+              </h3>
+              <p class="text-muted text-xs sm:text-sm leading-relaxed">
+                {pillar.desc}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    <!-- Specifications Table -->
+    <div class="border-t border-stone-200 dark:border-[#262626] pt-8">
+      <h2 class="text-xl sm:text-2xl font-display font-bold text-ink uppercase tracking-tight mb-6">
+        {content.specsTitle}
+      </h2>
+      <div class="bg-stone-50/80 dark:bg-[#151515] border border-stone-200/80 dark:border-[#262626] rounded-xl divide-y divide-stone-200/60 dark:divide-[#262626] overflow-hidden">
+        {content.specs.map((spec) => (
+          <div class="p-4 sm:p-5 flex flex-col sm:flex-row justify-between sm:items-center gap-1 sm:gap-4 text-xs sm:text-sm">
+            <span class="font-display font-bold text-ink uppercase tracking-wider text-xs">{spec.label}</span>
+            <span class="text-muted font-mono">{spec.value}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+</Layout>

@@ -1,0 +1,201 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { ControllerDashboard } from '../../components/ControllerDashboard';
+import { indexContent } from '../../i18n/content/indexContent';
+import { nonDefaultLocales, type SupportedLang } from '../../i18n/languages';
+import { getLocalizedUrl } from '../../i18n/utils';
+import { formatLocalizedNumber, localizedStepLabels } from '../../i18n/numUtils';
+
+export async function getStaticPaths() {
+  return nonDefaultLocales.map((lang) => ({ params: { lang } }));
+}
+
+const { lang } = Astro.params as { lang: SupportedLang };
+const content = indexContent[lang] || indexContent['en'];
+const canonicalUrl = getLocalizedUrl(lang, Astro.url);
+
+const indexSchema = [
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": content.heroHeading,
+    "url": canonicalUrl,
+    "applicationCategory": "UtilityApplication",
+    "operatingSystem": "Windows, macOS, Linux, ChromeOS, Android, iOS",
+    "browserRequirements": "Requires HTML5 Gamepad API support (Chrome, Edge, Firefox, Safari, Opera)",
+    "description": content.description,
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD"
+    }
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": content.faqs.map(faq => ({
+      "@type": "Question",
+      "name": faq.q,
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": faq.a
+      }
+    }))
+  }
+];
+
+const colorTokens = ['text-m-blue-light', 'text-m-blue-dark', 'text-[#0fa336]', 'text-m-red', 'text-[#f4b400]', 'text-purple-500'];
+---
+
+<Layout 
+  title={content.title}
+  description={content.description}
+  keywords={content.keywords}
+  canonicalUrl={canonicalUrl}
+  schema={indexSchema}
+  lang={lang}
+>
+  <!-- Interactive Diagnostics Suite (Fits completely on initial viewport) -->
+  <ControllerDashboard client:only="react" lang={lang} />
+
+  <!-- Educational Written Content & Hardware Diagnostic Guide (Visible on Scroll) -->
+  <section class="w-full py-16 space-y-16">
+    
+    <!-- Section 1: Overview & Quick Start -->
+    <div>
+      <div class="mb-3">
+        <span class="text-xs font-mono uppercase tracking-[2px] text-m-blue-dark font-bold">{content.heroBadge}</span>
+        <h2 class="text-2xl sm:text-3xl font-display font-bold text-ink uppercase tracking-tight mt-1">
+          {content.instructionsHeading}
+        </h2>
+      </div>
+      <p class="text-muted text-sm sm:text-base font-light leading-relaxed max-w-3xl mb-8">
+        {content.heroSub}
+      </p>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+        {content.instructionsSteps.map((step, idx) => (
+          <div class="bg-stone-50/80 dark:bg-[#151515] border border-stone-200/80 dark:border-[#262626] rounded-xl p-5 sm:p-6 flex flex-col justify-between">
+            <div>
+              <div class={`text-xs font-mono font-bold uppercase tracking-wider mb-2 ${colorTokens[idx % colorTokens.length]}`}>
+                {formatLocalizedNumber(idx + 1, lang)} // {localizedStepLabels[lang] || 'Step'}
+              </div>
+              <p class="text-ink text-xs sm:text-sm leading-relaxed font-medium">
+                {step}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    <!-- Section 2: Universal Hardware Compatibility Matrix -->
+    <div class="bg-stone-50/80 dark:bg-[#151515] border border-stone-200/80 dark:border-[#262626] rounded-2xl p-6 sm:p-8">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-6 pb-4 border-b border-stone-200/80 dark:border-[#262626] gap-2">
+        <div>
+          <span class="text-xs font-mono uppercase tracking-[2px] text-m-blue-dark font-bold block mb-1">{content.matrixBadge}</span>
+          <h3 class="text-xl sm:text-2xl font-display font-bold text-ink uppercase tracking-tight">
+            {content.matrixHeading}
+          </h3>
+        </div>
+        <span class="text-xs font-mono text-muted uppercase">
+          {content.matrixStandard}
+        </span>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+        {content.matrixPlatforms.map((platform) => (
+          <div class="p-4 bg-white/70 dark:bg-[#111111] border border-stone-200/80 dark:border-[#262626] rounded-xl">
+            <span class={`font-display font-bold text-sm uppercase block mb-1.5 ${platform.color}`}>{platform.platform}</span>
+            <p class="text-muted text-xs leading-relaxed">
+              {platform.desc}
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    <!-- Section 3: Diagnostic Principles & Hardware Specifications -->
+    <div>
+      <div class="mb-6">
+        <span class="text-xs font-mono uppercase tracking-[2px] text-muted font-bold block mb-1">{content.specsBadge}</span>
+        <h3 class="text-xl sm:text-2xl font-display font-bold text-ink uppercase tracking-tight">
+          {content.specsHeading}
+        </h3>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5 text-xs sm:text-sm">
+        {content.specs.map((spec, idx) => (
+          <div class="bg-stone-50/80 dark:bg-[#151515] border border-stone-200/80 dark:border-[#262626] rounded-xl p-5 sm:p-6">
+            <span class={`text-xs font-mono font-bold uppercase block mb-1.5 ${colorTokens[idx % colorTokens.length]}`}>
+              {formatLocalizedNumber(idx + 1, lang, 2)}
+            </span>
+            <h4 class="text-base font-display font-bold text-ink uppercase mb-2">
+              {spec.title}
+            </h4>
+            <p class="text-muted text-xs sm:text-sm leading-relaxed">
+              {spec.desc}
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    <!-- Section 4: Hardware Maintenance & Troubleshooting Guide -->
+    <div class="bg-stone-50/80 dark:bg-[#151515] border border-stone-200/80 dark:border-[#262626] rounded-2xl p-6 sm:p-8">
+      <div class="mb-6 pb-4 border-b border-stone-200/80 dark:border-[#262626]">
+        <span class="text-xs font-mono uppercase tracking-[2px] text-m-blue-light font-bold block mb-1">{content.maintenanceBadge}</span>
+        <h3 class="text-xl sm:text-2xl font-display font-bold text-ink uppercase tracking-tight">
+          {content.maintenanceHeading}
+        </h3>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs sm:text-sm">
+        {content.maintenanceSteps.map((mStep, idx) => (
+          <div class="space-y-2">
+            <span class={`text-xs font-mono font-bold uppercase block ${colorTokens[idx % colorTokens.length]}`}>{formatLocalizedNumber(idx + 1, lang, 2)}</span>
+            <h4 class="text-sm font-display font-bold text-ink uppercase">{mStep.title}</h4>
+            <p class="text-muted leading-relaxed">
+              {mStep.desc}
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    <!-- Section 5: Diagnostic Knowledge Base FAQ Section -->
+    <div class="border-t border-stone-200 dark:border-[#262626] pt-12">
+      <div class="mb-8">
+        <span class="text-xs font-mono uppercase tracking-[2px] text-m-red font-bold block mb-1">{content.faqSub}</span>
+        <h3 class="text-2xl font-display font-bold text-ink uppercase tracking-tight">
+          {content.faqHeading}
+        </h3>
+      </div>
+
+      <div class="space-y-4">
+        {content.faqs.map((faq, index) => {
+          const numStr = formatLocalizedNumber(index + 1, lang, 2);
+          const colorToken = colorTokens[index % colorTokens.length];
+          return (
+            <details class="group bg-stone-50/80 dark:bg-[#151515] border border-stone-200/80 dark:border-[#262626] rounded-xl overflow-hidden transition-all duration-200 open:border-stone-300 dark:open:border-[#383838]">
+              <summary class="flex items-center justify-between p-4 sm:p-5 cursor-pointer select-none list-none text-ink font-display font-bold text-sm sm:text-base uppercase tracking-tight hover:bg-stone-100/50 dark:hover:bg-white/[0.02] transition-colors">
+                <div class="flex items-center gap-3.5 pr-4">
+                  <span class={`w-7 h-7 rounded-lg bg-stone-200/70 dark:bg-[#202020] ${colorToken} flex items-center justify-center text-xs font-mono font-bold shrink-0`}>
+                    {numStr}
+                  </span>
+                  <span>{faq.q}</span>
+                </div>
+                <svg class="w-4 h-4 text-stone-400 dark:text-stone-500 transition-transform duration-200 group-open:rotate-180 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+              </summary>
+              <div class="px-5 pb-5 pt-2 text-muted text-xs sm:text-sm leading-relaxed border-t border-stone-200/50 dark:border-white/5 bg-white/40 dark:bg-black/20">
+                <p>{faq.a}</p>
+              </div>
+            </details>
+          );
+        })}
+      </div>
+    </div>
+
+  </section>
+</Layout>
