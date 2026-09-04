@@ -53,6 +53,7 @@ export function ReactionMatrix({ initialMode = 'f1', lang }: ReactionMatrixProps
   const [f1History, setF1History] = useState<number[]>([]);
   
   const [gameMode, setGameMode] = useState<'matrix' | 'f1'>(initialMode);
+  const [matrixCount, setMatrixCount] = useState<number>(3);
   const [jumpStart, setJumpStart] = useState(false);
   const [canStartWithController, setCanStartWithController] = useState(false);
   const [f1Armed, setF1Armed] = useState(false);
@@ -230,15 +231,18 @@ export function ReactionMatrix({ initialMode = 'f1', lang }: ReactionMatrixProps
 
     if (mode === 'matrix') {
       setTimeLeft(30);
-      let count = 3;
+      setMatrixCount(3);
       const countInterval = setInterval(() => {
-        count--;
-        if (count <= 0) {
-          clearInterval(countInterval);
-          setGameState('playing');
-          setCurrentTarget(TARGETS[Math.floor(Math.random() * TARGETS.length)]);
-          setTargetStartTime(Date.now());
-        }
+        setMatrixCount(prev => {
+          if (prev <= 1) {
+            clearInterval(countInterval);
+            setGameState('playing');
+            setCurrentTarget(TARGETS[Math.floor(Math.random() * TARGETS.length)]);
+            setTargetStartTime(Date.now());
+            return 0;
+          }
+          return prev - 1;
+        });
       }, 1000);
     } else {
       // F1 5-Light Sequence
@@ -430,13 +434,21 @@ export function ReactionMatrix({ initialMode = 'f1', lang }: ReactionMatrixProps
 
       {/* Countdown State */}
       {gameState === 'countdown' && (
-        <div className="flex flex-col items-center gap-6">
-          {gameMode === 'f1' && <div className="text-sm font-display text-muted uppercase tracking-[2px] animate-pulse">{t.waitForLights}</div>}
-          <div className="flex gap-3 md:gap-4">
-            {[1,2,3,4,5].map(i => (
-              <div key={i} className={`w-12 h-12 md:w-16 md:h-16 rounded-full border border-hairline transition-all ${lights >= i ? 'bg-m-red shadow-[0_0_25px_rgba(226,39,24,0.9)]' : 'bg-surface-card'}`}></div>
-            ))}
-          </div>
+        <div className="flex flex-col items-center justify-center min-h-[260px] gap-6">
+          {gameMode === 'f1' ? (
+            <>
+              <div className="text-sm font-display text-muted uppercase tracking-[2px] animate-pulse">{t.waitForLights}</div>
+              <div className="flex gap-3 md:gap-4">
+                {[1,2,3,4,5].map(i => (
+                  <div key={i} className={`w-12 h-12 md:w-16 md:h-16 rounded-full border border-hairline transition-all ${lights >= i ? 'bg-m-red shadow-[0_0_25px_rgba(226,39,24,0.9)]' : 'bg-surface-card'}`}></div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="text-[120px] font-display font-bold text-m-blue-dark animate-ping" key={matrixCount}>
+              {matrixCount}
+            </div>
+          )}
         </div>
       )}
 
