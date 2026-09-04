@@ -106,6 +106,16 @@ const ogLocale = ogLocaleMap[currentLang] || 'en_US';
 			<script type="application/ld+json" set:html={JSON.stringify(schema)} />
 		)}
 	
+		<!-- Google tag (gtag.js) -->
+		<script async src="https://www.googletagmanager.com/gtag/js?id=G-XTXNMKDGDY" is:inline></script>
+		<script is:inline>
+			window.dataLayer = window.dataLayer || [];
+			function gtag(){dataLayer.push(arguments);}
+			gtag('js', new Date());
+
+			gtag('config', 'G-XTXNMKDGDY');
+		</script>
+
     <!-- Theme Script -->
     <script is:inline>
       const theme = (() => {
