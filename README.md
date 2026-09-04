@@ -13,19 +13,3 @@ A suite of fast, web-based diagnostic tools for gamers and esports competitors.
 - **APIs:** HTML5 Gamepad API
 - **Internationalization:** 11 languages supported natively
 
-## Getting Started
-
-1. Install dependencies:
-   ```sh
-   npm install
-   ```
-2. Run the development server:
-   ```sh
-   npm run dev
-   ```
-3. Open `http://localhost:4321` in your browser.
-
-## Build
-```sh
-npm run build
-```
