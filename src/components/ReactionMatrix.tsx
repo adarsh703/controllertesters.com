@@ -56,9 +56,11 @@ export function ReactionMatrix({ initialMode = 'f1', lang }: ReactionMatrixProps
   const [gameMode, setGameMode] = useState<'matrix' | 'f1'>(initialMode);
   const [matrixCount, setMatrixCount] = useState<number>(3);
   const [jumpStart, setJumpStart] = useState(false);
-  const [canStartWithController, setCanStartWithController] = useState(false);
   const [f1Armed, setF1Armed] = useState(false);
   const [audioSuspended, setAudioSuspended] = useState(false);
+
+  const canStartWithPadRef = useRef(false);
+  const isActiveCountdownRef = useRef(false);
 
   useEffect(() => {
     return () => {
@@ -66,6 +68,23 @@ export function ReactionMatrix({ initialMode = 'f1', lang }: ReactionMatrixProps
       if (timerRefs.current.timeout) clearTimeout(timerRefs.current.timeout);
     };
   }, []);
+
+  const handleJumpStart = () => {
+    isActiveCountdownRef.current = false;
+    if (timerRefs.current.interval) {
+      clearInterval(timerRefs.current.interval);
+      timerRefs.current.interval = undefined;
+    }
+    if (timerRefs.current.timeout) {
+      clearTimeout(timerRefs.current.timeout);
+      timerRefs.current.timeout = undefined;
+    }
+    setLights(0);
+    setJumpStart(true);
+    setGameState('gameover');
+    playMatrixMiss();
+    vibrate(500, 1, 1);
+  };
 
   const getTriggerName = () => {
     if (!activeGamepad) return 'RT / R2';
@@ -95,10 +114,7 @@ export function ReactionMatrix({ initialMode = 'f1', lang }: ReactionMatrixProps
         if (gameState === 'idle' || gameState === 'gameover') {
           startGame(gameMode, 'user');
         } else if (gameState === 'countdown' && gameMode === 'f1') {
-          setJumpStart(true);
-          setGameState('gameover');
-          playMatrixMiss();
-          vibrate(500, 1, 1);
+          handleJumpStart();
         } else if (gameState === 'playing' && gameMode === 'f1') {
           playMatrixHit();
           vibrate(50, 1, 1);
@@ -116,15 +132,12 @@ export function ReactionMatrix({ initialMode = 'f1', lang }: ReactionMatrixProps
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [gameState, gameMode, vibrate]);
 
-  // Require all buttons to be released before allowing controller to start a game
+  // Reset pad readiness when entering idle or gameover
   useEffect(() => {
-    if (activeGamepad && (gameState === 'idle' || gameState === 'gameover')) {
-      const isAnyPressed = activeGamepad.buttons.some((b: any) => b.pressed) || activeGamepad.axes.some((a: any) => Math.abs(a) > 0.5);
-      if (!isAnyPressed && !canStartWithController) {
-        setCanStartWithController(true);
-      }
+    if (gameState === 'idle' || gameState === 'gameover') {
+      canStartWithPadRef.current = false;
     }
-  }, [activeGamepad, gameState, canStartWithController]);
+  }, [gameState]);
 
   // Arm F1 mode by requiring RT to be fully released before it can trigger jump starts or hits
   useEffect(() => {
@@ -138,21 +151,37 @@ export function ReactionMatrix({ initialMode = 'f1', lang }: ReactionMatrixProps
     }
   }, [activeGamepad, gameState, gameMode, f1Armed]);
 
-  // Start game via controller
+  // Start game via controller (RT/R2, A/Cross, Y/Triangle)
   useEffect(() => {
-    if ((gameState === 'idle' || gameState === 'gameover') && activeGamepad && canStartWithController) {
-      // A (0) or X (2) starts Matrix Mode
-      if (activeGamepad.buttons[0]?.pressed || activeGamepad.buttons[2]?.pressed) {
-        setCanStartWithController(false);
-        startGame('matrix', 'controller');
-      }
-      // RT (7) or Y (3) starts F1 Mode
-      if (activeGamepad.buttons[7]?.pressed || activeGamepad.buttons[7]?.value > 0.5 || activeGamepad.buttons[3]?.pressed) {
-        setCanStartWithController(false);
+    if (!activeGamepad) return;
+    if (gameState !== 'idle' && gameState !== 'gameover') return;
+
+    const isRTPulled = (activeGamepad.buttons[7]?.value > 0.2) || activeGamepad.buttons[7]?.pressed;
+    const isAPressed = activeGamepad.buttons[0]?.pressed;
+    const isXPressed = activeGamepad.buttons[2]?.pressed;
+    const isYPressed = activeGamepad.buttons[3]?.pressed;
+
+    // Require releasing buttons first to prevent accidental immediate starts
+    if (!isRTPulled && !isAPressed && !isXPressed && !isYPressed) {
+      canStartWithPadRef.current = true;
+    }
+
+    if (!canStartWithPadRef.current) return;
+
+    if (gameMode === 'f1') {
+      // RT/R2, A/Cross, or Y starts F1
+      if (isRTPulled || isAPressed || isYPressed) {
+        canStartWithPadRef.current = false;
         startGame('f1', 'controller');
       }
+    } else {
+      // A/Cross, X/Square, or RT/R2 starts Matrix
+      if (isAPressed || isXPressed || isRTPulled) {
+        canStartWithPadRef.current = false;
+        startGame('matrix', 'controller');
+      }
     }
-  }, [activeGamepad, gameState, canStartWithController]);
+  }, [activeGamepad, gameState, gameMode]);
 
   // Input listener
   useEffect(() => {
@@ -162,10 +191,7 @@ export function ReactionMatrix({ initialMode = 'f1', lang }: ReactionMatrixProps
     if (gameState === 'countdown' && gameMode === 'f1') {
       const isRTPulled = (activeGamepad.buttons[7]?.value > 0.1) || activeGamepad.buttons[7]?.pressed;
       if (isRTPulled && f1Armed) {
-        setJumpStart(true);
-        setGameState('gameover');
-        playMatrixMiss();
-        vibrate(500, 1, 1);
+        handleJumpStart();
       }
     }
 
@@ -227,9 +253,16 @@ export function ReactionMatrix({ initialMode = 'f1', lang }: ReactionMatrixProps
     }
     
     // Clear any existing timers
-    if (timerRefs.current.interval) clearInterval(timerRefs.current.interval);
-    if (timerRefs.current.timeout) clearTimeout(timerRefs.current.timeout);
+    if (timerRefs.current.interval) {
+      clearInterval(timerRefs.current.interval);
+      timerRefs.current.interval = undefined;
+    }
+    if (timerRefs.current.timeout) {
+      clearTimeout(timerRefs.current.timeout);
+      timerRefs.current.timeout = undefined;
+    }
 
+    isActiveCountdownRef.current = true;
     setGameMode(mode);
     setGameState('countdown');
     setScore(0);
@@ -242,9 +275,20 @@ export function ReactionMatrix({ initialMode = 'f1', lang }: ReactionMatrixProps
       setTimeLeft(30);
       setMatrixCount(3);
       timerRefs.current.interval = window.setInterval(() => {
+        if (!isActiveCountdownRef.current) {
+          if (timerRefs.current.interval) {
+            clearInterval(timerRefs.current.interval);
+            timerRefs.current.interval = undefined;
+          }
+          return;
+        }
         setMatrixCount(prev => {
           if (prev <= 1) {
-            clearInterval(timerRefs.current.interval);
+            if (timerRefs.current.interval) {
+              clearInterval(timerRefs.current.interval);
+              timerRefs.current.interval = undefined;
+            }
+            isActiveCountdownRef.current = false;
             setGameState('playing');
             setCurrentTarget(TARGETS[Math.floor(Math.random() * TARGETS.length)]);
             targetStartTimeRef.current = performance.now();
@@ -259,17 +303,29 @@ export function ReactionMatrix({ initialMode = 'f1', lang }: ReactionMatrixProps
       let currentLight = 0;
       
       timerRefs.current.interval = window.setInterval(() => {
+        if (!isActiveCountdownRef.current) {
+          if (timerRefs.current.interval) {
+            clearInterval(timerRefs.current.interval);
+            timerRefs.current.interval = undefined;
+          }
+          return;
+        }
+
         currentLight++;
         setLights(currentLight);
         playRedLight();
         
         if (currentLight >= 5) {
-          clearInterval(timerRefs.current.interval);
+          if (timerRefs.current.interval) {
+            clearInterval(timerRefs.current.interval);
+            timerRefs.current.interval = undefined;
+          }
           // Random blackout hold between 0.2s and 3.0s (official FIA starting range)
           const randomDelay = Math.floor(Math.random() * 2800) + 200;
           timerRefs.current.timeout = window.setTimeout(() => {
             setGameState(currState => {
-              if (currState === 'countdown') {
+              if (currState === 'countdown' && isActiveCountdownRef.current) {
+                isActiveCountdownRef.current = false;
                 setLights(0);
                 playLightsOut();
                 targetStartTimeRef.current = performance.now();
@@ -317,10 +373,7 @@ export function ReactionMatrix({ initialMode = 'f1', lang }: ReactionMatrixProps
       return;
     }
     if (gameState === 'countdown' && gameMode === 'f1') {
-      setJumpStart(true);
-      setGameState('gameover');
-      playMatrixMiss();
-      vibrate(500, 1, 1);
+      handleJumpStart();
     } else if (gameState === 'playing' && gameMode === 'f1') {
       playMatrixHit();
       vibrate(50, 1, 1);
@@ -611,6 +664,11 @@ export function ReactionMatrix({ initialMode = 'f1', lang }: ReactionMatrixProps
                 {t.resetSession}
               </button>
             )}
+          </div>
+          <div className="text-[11px] font-mono text-muted uppercase tracking-wider mt-3">
+            {gameMode === 'f1' 
+              ? t.f1ControlsHint.replace('RT / R2', triggerName) 
+              : t.matrixControlsHint.replace(/A\s*\/\s*(Cross|X|Cruz|Croix|Kreuz|✕|Croce)/i, bottomBtnName)}
           </div>
         </div>
       )}
