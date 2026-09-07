@@ -39,8 +39,15 @@ export function useGamepad() {
     if (updated) {
       setGamepads(newGamepads);
       setActiveGamepadIndex((prev) => {
-        if (prev === null && Object.keys(newGamepads).length > 0) {
-          return Number(Object.keys(newGamepads)[0]);
+        // Auto-focus the gamepad that currently has button activity
+        for (const idxStr of Object.keys(newGamepads)) {
+          const pad = newGamepads[Number(idxStr)];
+          if (pad && pad.buttons.some(b => b.pressed || b.value > 0.1)) {
+            return Number(idxStr);
+          }
+        }
+        if (prev === null || newGamepads[prev] === undefined) {
+          return Object.keys(newGamepads).length > 0 ? Number(Object.keys(newGamepads)[0]) : null;
         }
         return prev;
       });

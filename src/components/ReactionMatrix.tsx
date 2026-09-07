@@ -37,7 +37,9 @@ export function ReactionMatrix({ initialMode = 'f1', lang }: ReactionMatrixProps
   const activeLang = getWidgetLang(lang);
   const t = widgetTranslations[activeLang] || widgetTranslations['en'];
 
-  const { activeGamepad, vibrate } = useGamepad();
+  const { activeGamepad, gamepads, vibrate } = useGamepad();
+  const pad = activeGamepad || Object.values(gamepads)[0];
+
   const [gameState, setGameState] = useState<'idle' | 'countdown' | 'playing' | 'gameover'>('idle');
   const [timeLeft, setTimeLeft] = useState(30);
   const [score, setScore] = useState(0);
@@ -59,7 +61,7 @@ export function ReactionMatrix({ initialMode = 'f1', lang }: ReactionMatrixProps
   const [f1Armed, setF1Armed] = useState(false);
   const [audioSuspended, setAudioSuspended] = useState(false);
 
-  const canStartWithPadRef = useRef(false);
+  const prevPadButtonsRef = useRef<{ rt: boolean; a: boolean; y: boolean }>({ rt: false, a: false, y: false });
   const isActiveCountdownRef = useRef(false);
 
   useEffect(() => {
@@ -86,16 +88,25 @@ export function ReactionMatrix({ initialMode = 'f1', lang }: ReactionMatrixProps
     vibrate(500, 1, 1);
   };
 
+  const checkRTPulled = (gp: any) => {
+    if (!gp) return false;
+    if (gp.buttons && gp.buttons[7]) {
+      if (gp.buttons[7].pressed || gp.buttons[7].value > 0.1) return true;
+    }
+    if (gp.axes && gp.axes[5] !== undefined && gp.axes[5] > 0.2) return true;
+    return false;
+  };
+
   const getTriggerName = () => {
-    if (!activeGamepad) return 'RT / R2';
-    const id = activeGamepad.id.toLowerCase();
+    if (!pad) return 'RT / R2';
+    const id = pad.id.toLowerCase();
     if (id.includes('playstation') || id.includes('dualshock') || id.includes('dualsense') || id.includes('wireless controller')) return 'R2';
     return 'RT';
   };
   
   const getBottomButtonName = () => {
-    if (!activeGamepad) return 'A / Cross';
-    const id = activeGamepad.id.toLowerCase();
+    if (!pad) return 'A / Cross';
+    const id = pad.id.toLowerCase();
     if (id.includes('playstation') || id.includes('dualshock') || id.includes('dualsense') || id.includes('wireless controller')) return 'Cross';
     return 'A';
   };
@@ -132,64 +143,55 @@ export function ReactionMatrix({ initialMode = 'f1', lang }: ReactionMatrixProps
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [gameState, gameMode, vibrate]);
 
-  // Reset pad readiness when entering idle or gameover
-  useEffect(() => {
-    if (gameState === 'idle' || gameState === 'gameover') {
-      canStartWithPadRef.current = false;
-    }
-  }, [gameState]);
-
   // Arm F1 mode by requiring RT to be fully released before it can trigger jump starts or hits
   useEffect(() => {
-    if ((gameState === 'countdown' || gameState === 'playing') && gameMode === 'f1' && activeGamepad) {
-      const isRTPulled = (activeGamepad.buttons[7]?.value > 0.1) || activeGamepad.buttons[7]?.pressed;
+    if ((gameState === 'countdown' || gameState === 'playing') && gameMode === 'f1' && pad) {
+      const isRTPulled = checkRTPulled(pad);
       if (!isRTPulled && !f1Armed) {
         setF1Armed(true);
       }
     } else if (gameState === 'idle' || gameState === 'gameover') {
       setF1Armed(false);
     }
-  }, [activeGamepad, gameState, gameMode, f1Armed]);
+  }, [pad, gameState, gameMode, f1Armed]);
 
-  // Start game via controller (RT/R2, A/Cross, Y/Triangle)
+  // Start game via controller (RT/R2, A/Cross, Y/Triangle) using edge detection
   useEffect(() => {
-    if (!activeGamepad) return;
-    if (gameState !== 'idle' && gameState !== 'gameover') return;
+    if (!pad) return;
 
-    const isRTPulled = (activeGamepad.buttons[7]?.value > 0.2) || activeGamepad.buttons[7]?.pressed;
-    const isAPressed = activeGamepad.buttons[0]?.pressed;
-    const isXPressed = activeGamepad.buttons[2]?.pressed;
-    const isYPressed = activeGamepad.buttons[3]?.pressed;
+    const rtDown = checkRTPulled(pad);
+    const aDown = !!pad.buttons?.[0]?.pressed;
+    const yDown = !!pad.buttons?.[3]?.pressed;
 
-    // Require releasing buttons first to prevent accidental immediate starts
-    if (!isRTPulled && !isAPressed && !isXPressed && !isYPressed) {
-      canStartWithPadRef.current = true;
+    if (gameState !== 'idle' && gameState !== 'gameover') {
+      prevPadButtonsRef.current = { rt: rtDown, a: aDown, y: yDown };
+      return;
     }
 
-    if (!canStartWithPadRef.current) return;
+    const rtJustPressed = rtDown && !prevPadButtonsRef.current.rt;
+    const aJustPressed = aDown && !prevPadButtonsRef.current.a;
+    const yJustPressed = yDown && !prevPadButtonsRef.current.y;
+
+    prevPadButtonsRef.current = { rt: rtDown, a: aDown, y: yDown };
 
     if (gameMode === 'f1') {
-      // RT/R2, A/Cross, or Y starts F1
-      if (isRTPulled || isAPressed || isYPressed) {
-        canStartWithPadRef.current = false;
+      if (rtJustPressed || aJustPressed || yJustPressed) {
         startGame('f1', 'controller');
       }
     } else {
-      // A/Cross, X/Square, or RT/R2 starts Matrix
-      if (isAPressed || isXPressed || isRTPulled) {
-        canStartWithPadRef.current = false;
+      if (aJustPressed || rtJustPressed || yJustPressed) {
         startGame('matrix', 'controller');
       }
     }
-  }, [activeGamepad, gameState, gameMode]);
+  }, [pad, gameState, gameMode]);
 
   // Input listener
   useEffect(() => {
-    if (!activeGamepad) return;
+    if (!pad) return;
 
     // F1 Jump start detection
     if (gameState === 'countdown' && gameMode === 'f1') {
-      const isRTPulled = (activeGamepad.buttons[7]?.value > 0.1) || activeGamepad.buttons[7]?.pressed;
+      const isRTPulled = checkRTPulled(pad);
       if (isRTPulled && f1Armed) {
         handleJumpStart();
       }
@@ -198,7 +200,7 @@ export function ReactionMatrix({ initialMode = 'f1', lang }: ReactionMatrixProps
     if (gameState !== 'playing') return;
 
     // Matrix Hit Check
-    if (gameMode === 'matrix' && currentTarget.check(activeGamepad.buttons, activeGamepad.axes)) {
+    if (gameMode === 'matrix' && currentTarget.check(pad.buttons, pad.axes)) {
       const reactTime = Math.round(performance.now() - targetStartTimeRef.current);
       setReactionTimes(prev => [...prev, reactTime]);
       setLastReactTime(reactTime);
@@ -214,7 +216,7 @@ export function ReactionMatrix({ initialMode = 'f1', lang }: ReactionMatrixProps
 
     // F1 Reflex Hit Check
     if (gameMode === 'f1') {
-      const isRTPulled = (activeGamepad.buttons[7]?.value > 0.1) || activeGamepad.buttons[7]?.pressed;
+      const isRTPulled = checkRTPulled(pad);
       if (isRTPulled && f1Armed) {
         const reactTime = Math.round(performance.now() - targetStartTimeRef.current);
         setLastReactTime(reactTime);
@@ -226,7 +228,7 @@ export function ReactionMatrix({ initialMode = 'f1', lang }: ReactionMatrixProps
         setGameState('gameover');
       }
     }
-  }, [activeGamepad, gameState, currentTarget, gameMode, f1Armed, vibrate]);
+  }, [pad, gameState, currentTarget, gameMode, f1Armed, vibrate]);
 
   // Timer loop for Matrix Mode
   useEffect(() => {
@@ -368,7 +370,11 @@ export function ReactionMatrix({ initialMode = 'f1', lang }: ReactionMatrixProps
 
   // Handle click on canvas / container for F1 reactions
   const handleContainerClick = () => {
-    if (gameState === 'idle' || gameState === 'gameover') {
+    if (gameState === 'idle') {
+      startGame(gameMode, 'user');
+      return;
+    }
+    if (gameState === 'gameover') {
       // Don't restart on background click in gameover to let user review stats
       return;
     }
