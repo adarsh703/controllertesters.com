@@ -45,7 +45,8 @@ export function ReactionMatrix({ initialMode = 'f1', lang }: ReactionMatrixProps
   const [lights, setLights] = useState(0);
   
   // Reaction time tracking
-  const [targetStartTime, setTargetStartTime] = useState<number>(0);
+  const targetStartTimeRef = useRef<number>(0);
+  const timerRefs = useRef<{ interval?: number, timeout?: number }>({});
   const [reactionTimes, setReactionTimes] = useState<number[]>([]);
   const [lastReactTime, setLastReactTime] = useState<number | null>(null);
 
@@ -58,6 +59,13 @@ export function ReactionMatrix({ initialMode = 'f1', lang }: ReactionMatrixProps
   const [canStartWithController, setCanStartWithController] = useState(false);
   const [f1Armed, setF1Armed] = useState(false);
   const [audioSuspended, setAudioSuspended] = useState(false);
+
+  useEffect(() => {
+    return () => {
+      if (timerRefs.current.interval) clearInterval(timerRefs.current.interval);
+      if (timerRefs.current.timeout) clearTimeout(timerRefs.current.timeout);
+    };
+  }, []);
 
   const getTriggerName = () => {
     if (!activeGamepad) return 'RT / R2';
@@ -94,8 +102,7 @@ export function ReactionMatrix({ initialMode = 'f1', lang }: ReactionMatrixProps
         } else if (gameState === 'playing' && gameMode === 'f1') {
           playMatrixHit();
           vibrate(50, 1, 1);
-          const now = Date.now();
-          const reactTime = now - targetStartTime;
+          const reactTime = Math.round(performance.now() - targetStartTimeRef.current);
           setLastReactTime(reactTime);
           setReactionTimes(prev => [...prev, reactTime]);
           setF1History(prev => [...prev, reactTime]);
@@ -107,7 +114,7 @@ export function ReactionMatrix({ initialMode = 'f1', lang }: ReactionMatrixProps
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [gameState, gameMode, targetStartTime, vibrate]);
+  }, [gameState, gameMode, vibrate]);
 
   // Require all buttons to be released before allowing controller to start a game
   useEffect(() => {
@@ -166,8 +173,7 @@ export function ReactionMatrix({ initialMode = 'f1', lang }: ReactionMatrixProps
 
     // Matrix Hit Check
     if (gameMode === 'matrix' && currentTarget.check(activeGamepad.buttons, activeGamepad.axes)) {
-      const now = Date.now();
-      const reactTime = now - targetStartTime;
+      const reactTime = Math.round(performance.now() - targetStartTimeRef.current);
       setReactionTimes(prev => [...prev, reactTime]);
       setLastReactTime(reactTime);
       setScore(s => s + 1);
@@ -177,15 +183,14 @@ export function ReactionMatrix({ initialMode = 'f1', lang }: ReactionMatrixProps
       const nextTargets = TARGETS.filter(t => t.id !== currentTarget.id);
       const next = nextTargets[Math.floor(Math.random() * nextTargets.length)];
       setCurrentTarget(next);
-      setTargetStartTime(Date.now());
+      targetStartTimeRef.current = performance.now();
     }
 
     // F1 Reflex Hit Check
     if (gameMode === 'f1') {
       const isRTPulled = (activeGamepad.buttons[7]?.value > 0.1) || activeGamepad.buttons[7]?.pressed;
       if (isRTPulled && f1Armed) {
-        const now = Date.now();
-        const reactTime = now - targetStartTime;
+        const reactTime = Math.round(performance.now() - targetStartTimeRef.current);
         setLastReactTime(reactTime);
         setReactionTimes(prev => [...prev, reactTime]);
         setF1History(prev => [...prev, reactTime]);
@@ -195,7 +200,7 @@ export function ReactionMatrix({ initialMode = 'f1', lang }: ReactionMatrixProps
         setGameState('gameover');
       }
     }
-  }, [activeGamepad, gameState, currentTarget, targetStartTime, gameMode, f1Armed, vibrate]);
+  }, [activeGamepad, gameState, currentTarget, gameMode, f1Armed, vibrate]);
 
   // Timer loop for Matrix Mode
   useEffect(() => {
@@ -221,6 +226,10 @@ export function ReactionMatrix({ initialMode = 'f1', lang }: ReactionMatrixProps
       setAudioSuspended(false);
     }
     
+    // Clear any existing timers
+    if (timerRefs.current.interval) clearInterval(timerRefs.current.interval);
+    if (timerRefs.current.timeout) clearTimeout(timerRefs.current.timeout);
+
     setGameMode(mode);
     setGameState('countdown');
     setScore(0);
@@ -232,13 +241,13 @@ export function ReactionMatrix({ initialMode = 'f1', lang }: ReactionMatrixProps
     if (mode === 'matrix') {
       setTimeLeft(30);
       setMatrixCount(3);
-      const countInterval = setInterval(() => {
+      timerRefs.current.interval = window.setInterval(() => {
         setMatrixCount(prev => {
           if (prev <= 1) {
-            clearInterval(countInterval);
+            clearInterval(timerRefs.current.interval);
             setGameState('playing');
             setCurrentTarget(TARGETS[Math.floor(Math.random() * TARGETS.length)]);
-            setTargetStartTime(Date.now());
+            targetStartTimeRef.current = performance.now();
             return 0;
           }
           return prev - 1;
@@ -249,21 +258,21 @@ export function ReactionMatrix({ initialMode = 'f1', lang }: ReactionMatrixProps
       setLights(0);
       let currentLight = 0;
       
-      const lightInterval = setInterval(() => {
+      timerRefs.current.interval = window.setInterval(() => {
         currentLight++;
         setLights(currentLight);
         playRedLight();
         
         if (currentLight >= 5) {
-          clearInterval(lightInterval);
+          clearInterval(timerRefs.current.interval);
           // Random blackout hold between 0.2s and 3.0s (official FIA starting range)
           const randomDelay = Math.floor(Math.random() * 2800) + 200;
-          setTimeout(() => {
+          timerRefs.current.timeout = window.setTimeout(() => {
             setGameState(currState => {
               if (currState === 'countdown') {
                 setLights(0);
                 playLightsOut();
-                setTargetStartTime(Date.now());
+                targetStartTimeRef.current = performance.now();
                 return 'playing';
               }
               return currState;
@@ -315,8 +324,7 @@ export function ReactionMatrix({ initialMode = 'f1', lang }: ReactionMatrixProps
     } else if (gameState === 'playing' && gameMode === 'f1') {
       playMatrixHit();
       vibrate(50, 1, 1);
-      const now = Date.now();
-      const reactTime = now - targetStartTime;
+      const reactTime = Math.round(performance.now() - targetStartTimeRef.current);
       setLastReactTime(reactTime);
       setReactionTimes(prev => [...prev, reactTime]);
       setF1History(prev => [...prev, reactTime]);
