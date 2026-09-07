@@ -38,9 +38,16 @@ export function ReactionMatrix({ initialMode = 'f1', lang }: ReactionMatrixProps
   const t = widgetTranslations[activeLang] || widgetTranslations['en'];
 
   const { activeGamepad, gamepads, vibrate } = useGamepad();
-  const pad = activeGamepad || Object.values(gamepads)[0];
+  const pad = activeGamepad || Object.values(gamepads)[0] || null;
+
+  // Always-fresh ref so setTimeout/setInterval callbacks never read stale gamepad data
+  const padRef = useRef<any>(null);
+  useEffect(() => { padRef.current = pad; }, [pad]);
 
   const [gameState, setGameState] = useState<'idle' | 'countdown' | 'playing' | 'gameover'>('idle');
+  const gameStateRef = useRef(gameState);
+  useEffect(() => { gameStateRef.current = gameState; }, [gameState]);
+
   const [timeLeft, setTimeLeft] = useState(30);
   const [score, setScore] = useState(0);
   const [currentTarget, setCurrentTarget] = useState(TARGETS[0]);
@@ -56,14 +63,25 @@ export function ReactionMatrix({ initialMode = 'f1', lang }: ReactionMatrixProps
   const [f1History, setF1History] = useState<number[]>([]);
   
   const [gameMode, setGameMode] = useState<'matrix' | 'f1'>(initialMode);
+  const gameModeRef = useRef(gameMode);
+  useEffect(() => { gameModeRef.current = gameMode; }, [gameMode]);
+
   const [matrixCount, setMatrixCount] = useState<number>(3);
   const [jumpStart, setJumpStart] = useState(false);
   const [audioSuspended, setAudioSuspended] = useState(false);
 
+  // f1ArmedRef: becomes true once RT is fully released during countdown
+  // Only after arming can a re-press be detected as a jump-start or valid hit
   const f1ArmedRef = useRef(false);
-  const prevPadButtonsRef = useRef<{ rt: boolean; a: boolean; y: boolean }>({ rt: false, a: false, y: false });
+
+  // Rising-edge detection refs for game start (idle/gameover → countdown)
+  const prevRTRef = useRef(false);
+  const prevARef = useRef(false);
+
+  // Guards for active countdown
   const isActiveCountdownRef = useRef(false);
 
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (timerRefs.current.interval) clearInterval(timerRefs.current.interval);
@@ -71,6 +89,20 @@ export function ReactionMatrix({ initialMode = 'f1', lang }: ReactionMatrixProps
     };
   }, []);
 
+  // --- Trigger helpers with hysteresis ---
+  // Pressed threshold: > 0.5 (same as browser .pressed for most controllers)
+  // Released threshold: < 0.2 (generous gap to prevent flickering)
+  const isRTDown = (gp: any): boolean => {
+    if (!gp?.buttons?.[7]) return false;
+    return !!gp.buttons[7].pressed || (gp.buttons[7].value ?? 0) > 0.5;
+  };
+
+  const isRTUp = (gp: any): boolean => {
+    if (!gp?.buttons?.[7]) return true;
+    return !gp.buttons[7].pressed && (gp.buttons[7].value ?? 0) < 0.2;
+  };
+
+  // --- Jump start handler ---
   const handleJumpStart = () => {
     isActiveCountdownRef.current = false;
     f1ArmedRef.current = false;
@@ -89,16 +121,7 @@ export function ReactionMatrix({ initialMode = 'f1', lang }: ReactionMatrixProps
     vibrate(500, 1, 1);
   };
 
-  const checkRTPressed = (gp: any) => {
-    if (!gp?.buttons?.[7]) return false;
-    return !!gp.buttons[7].pressed || (gp.buttons[7].value ?? 0) > 0.4;
-  };
-
-  const checkRTReleased = (gp: any) => {
-    if (!gp?.buttons?.[7]) return true;
-    return !gp.buttons[7].pressed && (gp.buttons[7].value ?? 0) < 0.25;
-  };
-
+  // --- Controller name helpers ---
   const getTriggerName = () => {
     if (!pad) return 'RT / R2';
     const id = pad.id.toLowerCase();
@@ -116,7 +139,7 @@ export function ReactionMatrix({ initialMode = 'f1', lang }: ReactionMatrixProps
   const triggerName = getTriggerName();
   const bottomBtnName = getBottomButtonName();
 
-  // Keyboard Spacebar & Click Handlers for Non-Gamepad Users
+  // --- Keyboard input handler ---
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.code === 'Space' || e.code === 'Enter') {
@@ -130,10 +153,7 @@ export function ReactionMatrix({ initialMode = 'f1', lang }: ReactionMatrixProps
           handleJumpStart();
         } else if (gameState === 'playing' && gameMode === 'f1') {
           const reactTime = Math.round(performance.now() - targetStartTimeRef.current);
-          if (reactTime < 100) {
-            handleJumpStart();
-            return;
-          }
+          if (reactTime < 100) { handleJumpStart(); return; }
           playMatrixHit();
           vibrate(50, 1, 1);
           setLastReactTime(reactTime);
@@ -149,85 +169,94 @@ export function ReactionMatrix({ initialMode = 'f1', lang }: ReactionMatrixProps
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [gameState, gameMode, vibrate]);
 
-  // Start game via controller (RT/R2, A/Cross, Y/Triangle) using edge detection
+  // ====================================================================
+  // CONTROLLER: Start game via rising edge (idle/gameover → countdown)
+  // ====================================================================
   useEffect(() => {
     if (!pad) return;
 
-    const rtDown = checkRTPressed(pad);
-    const aDown = !!pad.buttons?.[0]?.pressed;
-    const yDown = !!pad.buttons?.[3]?.pressed;
+    const rtNow = isRTDown(pad);
+    const aNow = !!pad.buttons?.[0]?.pressed;
 
+    // While game is active (countdown/playing), just track button state
+    // so we know the "previous" state when transitioning back to idle/gameover
     if (gameState !== 'idle' && gameState !== 'gameover') {
-      prevPadButtonsRef.current = { rt: rtDown, a: aDown, y: yDown };
+      prevRTRef.current = rtNow;
+      prevARef.current = aNow;
       return;
     }
 
-    const rtJustPressed = rtDown && !prevPadButtonsRef.current.rt;
-    const aJustPressed = aDown && !prevPadButtonsRef.current.a;
-    const yJustPressed = yDown && !prevPadButtonsRef.current.y;
+    // Detect rising edge: was released last frame, pressed this frame
+    const rtEdge = rtNow && !prevRTRef.current;
+    const aEdge = aNow && !prevARef.current;
 
-    prevPadButtonsRef.current = { rt: rtDown, a: aDown, y: yDown };
+    // Always update tracking
+    prevRTRef.current = rtNow;
+    prevARef.current = aNow;
 
-    if (gameMode === 'f1') {
-      if (rtJustPressed || aJustPressed || yJustPressed) {
-        startGame('f1', 'controller');
-      }
-    } else {
-      if (aJustPressed || rtJustPressed || yJustPressed) {
-        startGame('matrix', 'controller');
-      }
+    if (rtEdge || aEdge) {
+      startGame(gameMode, 'controller');
     }
   }, [pad, gameState, gameMode]);
 
-  // Input listener during countdown and playing
+  // ====================================================================
+  // CONTROLLER: F1 countdown — arm on RT release, detect jump start
+  // ====================================================================
   useEffect(() => {
-    if (!pad) return;
+    if (!pad || gameMode !== 'f1' || gameState !== 'countdown') return;
 
-    // F1 Jump start detection during countdown
-    if (gameState === 'countdown' && gameMode === 'f1') {
-      if (checkRTReleased(pad)) {
+    // Phase 1: Wait for RT to be fully released (user started game by pressing RT)
+    if (!f1ArmedRef.current) {
+      if (isRTUp(pad)) {
         f1ArmedRef.current = true;
-      } else if (f1ArmedRef.current && checkRTPressed(pad)) {
-        handleJumpStart();
-        return;
       }
+      return; // Don't check for jump start until armed
     }
 
-    if (gameState !== 'playing') return;
+    // Phase 2: Armed — any RT press during countdown = jump start (false start)
+    if (isRTDown(pad)) {
+      handleJumpStart();
+    }
+  }, [pad, gameState, gameMode]);
 
-    // Matrix Hit Check
-    if (gameMode === 'matrix' && currentTarget.check(pad.buttons, pad.axes)) {
+  // ====================================================================
+  // CONTROLLER: F1 playing — detect reaction hit
+  // ====================================================================
+  useEffect(() => {
+    if (!pad || gameMode !== 'f1' || gameState !== 'playing') return;
+
+    if (isRTDown(pad)) {
+      const reactTime = Math.round(performance.now() - targetStartTimeRef.current);
+      // Safety: if we somehow get an impossibly fast time, treat as false start
+      if (reactTime < 100) { handleJumpStart(); return; }
+      setLastReactTime(reactTime);
+      setReactionTimes(prev => [...prev, reactTime]);
+      setF1History(prev => [...prev, reactTime]);
+      setScore(1);
+      playMatrixHit();
+      vibrate(50, 1, 1);
+      setGameState('gameover');
+    }
+  }, [pad, gameState, gameMode, vibrate]);
+
+  // ====================================================================
+  // CONTROLLER: Matrix mode hit detection
+  // ====================================================================
+  useEffect(() => {
+    if (!pad || gameState !== 'playing' || gameMode !== 'matrix') return;
+    if (currentTarget.check(pad.buttons, pad.axes)) {
       const reactTime = Math.round(performance.now() - targetStartTimeRef.current);
       setReactionTimes(prev => [...prev, reactTime]);
       setLastReactTime(reactTime);
       setScore(s => s + 1);
       playMatrixHit();
       vibrate(40, 0.4, 0.4);
-      
       const nextTargets = TARGETS.filter(t => t.id !== currentTarget.id);
       const next = nextTargets[Math.floor(Math.random() * nextTargets.length)];
       setCurrentTarget(next);
       targetStartTimeRef.current = performance.now();
     }
-
-    // F1 Reflex Hit Check (lights are OUT, any RT pull registers the hit immediately!)
-    if (gameMode === 'f1') {
-      if (checkRTPressed(pad)) {
-        const reactTime = Math.round(performance.now() - targetStartTimeRef.current);
-        if (reactTime < 100) {
-          handleJumpStart();
-          return;
-        }
-        setLastReactTime(reactTime);
-        setReactionTimes(prev => [...prev, reactTime]);
-        setF1History(prev => [...prev, reactTime]);
-        setScore(1);
-        playMatrixHit();
-        vibrate(50, 1, 1);
-        setGameState('gameover');
-      }
-    }
-  }, [pad, gameState, currentTarget, gameMode, vibrate]);
+  }, [pad, gameState, gameMode, currentTarget, vibrate]);
 
   // Timer loop for Matrix Mode
   useEffect(() => {
@@ -245,6 +274,9 @@ export function ReactionMatrix({ initialMode = 'f1', lang }: ReactionMatrixProps
     return () => clearInterval(timer);
   }, [gameState, gameMode]);
 
+  // ====================================================================
+  // startGame — initiates countdown for F1 or Matrix mode
+  // ====================================================================
   const startGame = (mode: 'matrix' | 'f1', source: 'user' | 'controller' = 'user') => {
     if (source === 'controller') {
       unlockAudio().catch(() => setAudioSuspended(true));
@@ -264,13 +296,13 @@ export function ReactionMatrix({ initialMode = 'f1', lang }: ReactionMatrixProps
     }
 
     isActiveCountdownRef.current = true;
+    f1ArmedRef.current = false;
     setGameMode(mode);
     setGameState('countdown');
     setScore(0);
     setReactionTimes([]);
     setLastReactTime(null);
     setJumpStart(false);
-    f1ArmedRef.current = false;
 
     if (mode === 'matrix') {
       setTimeLeft(30);
@@ -324,23 +356,23 @@ export function ReactionMatrix({ initialMode = 'f1', lang }: ReactionMatrixProps
           // Random blackout hold between 0.2s and 3.0s (official FIA starting range)
           const randomDelay = Math.floor(Math.random() * 2800) + 200;
           timerRefs.current.timeout = window.setTimeout(() => {
-            setGameState(currState => {
-              if (currState === 'countdown' && isActiveCountdownRef.current) {
-                // If trigger was already held down before lights extinguished, it is a false start!
-                const currentPad = activeGamepad || Object.values(gamepads)[0];
-                if (checkRTPressed(currentPad)) {
-                  handleJumpStart();
-                  return 'gameover';
-                }
+            // Use refs for fresh data — NEVER read closure variables here
+            if (!isActiveCountdownRef.current) return;
 
-                isActiveCountdownRef.current = false;
-                setLights(0);
-                playLightsOut();
-                targetStartTimeRef.current = performance.now();
-                return 'playing';
-              }
-              return currState;
-            });
+            // Check if trigger is held down right now using fresh padRef
+            const livePad = padRef.current;
+            if (livePad && f1ArmedRef.current && isRTDown(livePad)) {
+              // Trigger was released during countdown (armed) but pressed again
+              // right at the moment lights go out — this is a false start
+              handleJumpStart();
+              return;
+            }
+
+            isActiveCountdownRef.current = false;
+            setLights(0);
+            playLightsOut();
+            targetStartTimeRef.current = performance.now();
+            setGameState('playing');
           }, randomDelay);
         }
       }, 1000);

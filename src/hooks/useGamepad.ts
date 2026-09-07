@@ -42,7 +42,7 @@ export function useGamepad() {
         // Auto-focus the gamepad that currently has button activity
         for (const idxStr of Object.keys(newGamepads)) {
           const pad = newGamepads[Number(idxStr)];
-          if (pad && pad.buttons.some(b => b.pressed || b.value > 0.3)) {
+          if (pad && pad.buttons.some(b => b.pressed || b.value > 0.5)) {
             return Number(idxStr);
           }
         }
