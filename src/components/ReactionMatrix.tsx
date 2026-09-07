@@ -58,9 +58,9 @@ export function ReactionMatrix({ initialMode = 'f1', lang }: ReactionMatrixProps
   const [gameMode, setGameMode] = useState<'matrix' | 'f1'>(initialMode);
   const [matrixCount, setMatrixCount] = useState<number>(3);
   const [jumpStart, setJumpStart] = useState(false);
-  const [f1Armed, setF1Armed] = useState(false);
   const [audioSuspended, setAudioSuspended] = useState(false);
 
+  const f1ArmedRef = useRef(false);
   const prevPadButtonsRef = useRef<{ rt: boolean; a: boolean; y: boolean }>({ rt: false, a: false, y: false });
   const isActiveCountdownRef = useRef(false);
 
@@ -73,6 +73,7 @@ export function ReactionMatrix({ initialMode = 'f1', lang }: ReactionMatrixProps
 
   const handleJumpStart = () => {
     isActiveCountdownRef.current = false;
+    f1ArmedRef.current = false;
     if (timerRefs.current.interval) {
       clearInterval(timerRefs.current.interval);
       timerRefs.current.interval = undefined;
@@ -88,13 +89,14 @@ export function ReactionMatrix({ initialMode = 'f1', lang }: ReactionMatrixProps
     vibrate(500, 1, 1);
   };
 
-  const checkRTPulled = (gp: any) => {
-    if (!gp) return false;
-    if (gp.buttons && gp.buttons[7]) {
-      if (gp.buttons[7].pressed || gp.buttons[7].value > 0.1) return true;
-    }
-    if (gp.axes && gp.axes[5] !== undefined && gp.axes[5] > 0.2) return true;
-    return false;
+  const checkRTPressed = (gp: any) => {
+    if (!gp?.buttons?.[7]) return false;
+    return !!gp.buttons[7].pressed || (gp.buttons[7].value ?? 0) > 0.3;
+  };
+
+  const checkRTReleased = (gp: any) => {
+    if (!gp?.buttons?.[7]) return true;
+    return !gp.buttons[7].pressed && (gp.buttons[7].value ?? 0) < 0.15;
   };
 
   const getTriggerName = () => {
@@ -143,23 +145,11 @@ export function ReactionMatrix({ initialMode = 'f1', lang }: ReactionMatrixProps
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [gameState, gameMode, vibrate]);
 
-  // Arm F1 mode by requiring RT to be fully released before it can trigger jump starts or hits
-  useEffect(() => {
-    if ((gameState === 'countdown' || gameState === 'playing') && gameMode === 'f1' && pad) {
-      const isRTPulled = checkRTPulled(pad);
-      if (!isRTPulled && !f1Armed) {
-        setF1Armed(true);
-      }
-    } else if (gameState === 'idle' || gameState === 'gameover') {
-      setF1Armed(false);
-    }
-  }, [pad, gameState, gameMode, f1Armed]);
-
   // Start game via controller (RT/R2, A/Cross, Y/Triangle) using edge detection
   useEffect(() => {
     if (!pad) return;
 
-    const rtDown = checkRTPulled(pad);
+    const rtDown = checkRTPressed(pad);
     const aDown = !!pad.buttons?.[0]?.pressed;
     const yDown = !!pad.buttons?.[3]?.pressed;
 
@@ -185,15 +175,17 @@ export function ReactionMatrix({ initialMode = 'f1', lang }: ReactionMatrixProps
     }
   }, [pad, gameState, gameMode]);
 
-  // Input listener
+  // Input listener during countdown and playing
   useEffect(() => {
     if (!pad) return;
 
-    // F1 Jump start detection
+    // F1 Jump start detection during countdown
     if (gameState === 'countdown' && gameMode === 'f1') {
-      const isRTPulled = checkRTPulled(pad);
-      if (isRTPulled && f1Armed) {
+      if (checkRTReleased(pad)) {
+        f1ArmedRef.current = true;
+      } else if (f1ArmedRef.current && checkRTPressed(pad)) {
         handleJumpStart();
+        return;
       }
     }
 
@@ -214,10 +206,9 @@ export function ReactionMatrix({ initialMode = 'f1', lang }: ReactionMatrixProps
       targetStartTimeRef.current = performance.now();
     }
 
-    // F1 Reflex Hit Check
+    // F1 Reflex Hit Check (lights are OUT, any RT pull registers the hit immediately!)
     if (gameMode === 'f1') {
-      const isRTPulled = checkRTPulled(pad);
-      if (isRTPulled && f1Armed) {
+      if (checkRTPressed(pad)) {
         const reactTime = Math.round(performance.now() - targetStartTimeRef.current);
         setLastReactTime(reactTime);
         setReactionTimes(prev => [...prev, reactTime]);
@@ -228,7 +219,7 @@ export function ReactionMatrix({ initialMode = 'f1', lang }: ReactionMatrixProps
         setGameState('gameover');
       }
     }
-  }, [pad, gameState, currentTarget, gameMode, f1Armed, vibrate]);
+  }, [pad, gameState, currentTarget, gameMode, vibrate]);
 
   // Timer loop for Matrix Mode
   useEffect(() => {
@@ -271,7 +262,7 @@ export function ReactionMatrix({ initialMode = 'f1', lang }: ReactionMatrixProps
     setReactionTimes([]);
     setLastReactTime(null);
     setJumpStart(false);
-    setF1Armed(false);
+    f1ArmedRef.current = false;
 
     if (mode === 'matrix') {
       setTimeLeft(30);
