@@ -91,12 +91,12 @@ export function ReactionMatrix({ initialMode = 'f1', lang }: ReactionMatrixProps
 
   const checkRTPressed = (gp: any) => {
     if (!gp?.buttons?.[7]) return false;
-    return !!gp.buttons[7].pressed || (gp.buttons[7].value ?? 0) > 0.3;
+    return !!gp.buttons[7].pressed || (gp.buttons[7].value ?? 0) > 0.4;
   };
 
   const checkRTReleased = (gp: any) => {
     if (!gp?.buttons?.[7]) return true;
-    return !gp.buttons[7].pressed && (gp.buttons[7].value ?? 0) < 0.15;
+    return !gp.buttons[7].pressed && (gp.buttons[7].value ?? 0) < 0.25;
   };
 
   const getTriggerName = () => {
@@ -129,9 +129,13 @@ export function ReactionMatrix({ initialMode = 'f1', lang }: ReactionMatrixProps
         } else if (gameState === 'countdown' && gameMode === 'f1') {
           handleJumpStart();
         } else if (gameState === 'playing' && gameMode === 'f1') {
+          const reactTime = Math.round(performance.now() - targetStartTimeRef.current);
+          if (reactTime < 100) {
+            handleJumpStart();
+            return;
+          }
           playMatrixHit();
           vibrate(50, 1, 1);
-          const reactTime = Math.round(performance.now() - targetStartTimeRef.current);
           setLastReactTime(reactTime);
           setReactionTimes(prev => [...prev, reactTime]);
           setF1History(prev => [...prev, reactTime]);
@@ -210,6 +214,10 @@ export function ReactionMatrix({ initialMode = 'f1', lang }: ReactionMatrixProps
     if (gameMode === 'f1') {
       if (checkRTPressed(pad)) {
         const reactTime = Math.round(performance.now() - targetStartTimeRef.current);
+        if (reactTime < 100) {
+          handleJumpStart();
+          return;
+        }
         setLastReactTime(reactTime);
         setReactionTimes(prev => [...prev, reactTime]);
         setF1History(prev => [...prev, reactTime]);
@@ -318,6 +326,13 @@ export function ReactionMatrix({ initialMode = 'f1', lang }: ReactionMatrixProps
           timerRefs.current.timeout = window.setTimeout(() => {
             setGameState(currState => {
               if (currState === 'countdown' && isActiveCountdownRef.current) {
+                // If trigger was already held down before lights extinguished, it is a false start!
+                const currentPad = activeGamepad || Object.values(gamepads)[0];
+                if (checkRTPressed(currentPad)) {
+                  handleJumpStart();
+                  return 'gameover';
+                }
+
                 isActiveCountdownRef.current = false;
                 setLights(0);
                 playLightsOut();
@@ -372,9 +387,13 @@ export function ReactionMatrix({ initialMode = 'f1', lang }: ReactionMatrixProps
     if (gameState === 'countdown' && gameMode === 'f1') {
       handleJumpStart();
     } else if (gameState === 'playing' && gameMode === 'f1') {
+      const reactTime = Math.round(performance.now() - targetStartTimeRef.current);
+      if (reactTime < 100) {
+        handleJumpStart();
+        return;
+      }
       playMatrixHit();
       vibrate(50, 1, 1);
-      const reactTime = Math.round(performance.now() - targetStartTimeRef.current);
       setLastReactTime(reactTime);
       setReactionTimes(prev => [...prev, reactTime]);
       setF1History(prev => [...prev, reactTime]);
