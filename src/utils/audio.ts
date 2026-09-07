@@ -23,6 +23,21 @@ export async function unlockAudio() {
   return audioCtx?.state === 'running';
 }
 
+// Proactively unlock audio on first real user gesture (click/touch/keypress).
+// Gamepad API presses are NOT user activation events, so this ensures audio
+// is ready before the user starts using their controller.
+if (typeof window !== 'undefined') {
+  const earlyUnlock = () => {
+    unlockAudio();
+    window.removeEventListener('click', earlyUnlock);
+    window.removeEventListener('touchstart', earlyUnlock);
+    window.removeEventListener('keydown', earlyUnlock);
+  };
+  window.addEventListener('click', earlyUnlock, { once: false });
+  window.addEventListener('touchstart', earlyUnlock, { once: false });
+  window.addEventListener('keydown', earlyUnlock, { once: false });
+}
+
 function playTone(freq: number, type: OscillatorType, duration: number, vol: number = 0.1) {
   if (!audioCtx || isMuted) return;
   if (audioCtx.state === 'suspended') {

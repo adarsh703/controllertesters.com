@@ -278,12 +278,14 @@ export function ReactionMatrix({ initialMode = 'f1', lang }: ReactionMatrixProps
   // startGame — initiates countdown for F1 or Matrix mode
   // ====================================================================
   const startGame = (mode: 'matrix' | 'f1', source: 'user' | 'controller' = 'user') => {
-    if (source === 'controller') {
-      unlockAudio().catch(() => setAudioSuspended(true));
-    } else {
-      unlockAudio();
-      setAudioSuspended(false);
-    }
+    // Always attempt to unlock audio; gamepad presses aren't user gestures,
+    // but the early-unlock listener in audio.ts usually handles this already.
+    unlockAudio().then((running) => {
+      if (running) setAudioSuspended(false);
+      else if (source === 'controller') setAudioSuspended(true);
+    }).catch(() => {
+      if (source === 'controller') setAudioSuspended(true);
+    });
     
     // Clear any existing timers
     if (timerRefs.current.interval) {
